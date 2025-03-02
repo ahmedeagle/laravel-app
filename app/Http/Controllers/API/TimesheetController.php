@@ -1,49 +1,59 @@
 <?php
-
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\TimesheetResource;
+use App\Repositories\TimesheetRepository;
 use Illuminate\Http\Request;
 
 class TimesheetController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    protected $timesheetRepository;
+
+    public function __construct(TimesheetRepository $timesheetRepository)
+    {
+        $this->timesheetRepository = $timesheetRepository;
+    }
+
     public function index()
     {
-        //
+        return TimesheetResource::collection($this->timesheetRepository->getAllTimesheets());
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function show($id)
+    {
+        return new TimesheetResource($this->timesheetRepository->findTimesheetById($id));
+    }
+
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'task_name' => 'required|string|max:255',
+            'date' => 'required|date',
+            'hours' => 'required|integer|min:1',
+            'user_id' => 'required|exists:users,id',
+            'project_id' => 'required|exists:projects,id',
+        ]);
+
+        return new TimesheetResource($this->timesheetRepository->createTimesheet($validated));
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, $id)
     {
-        //
+        $validated = $request->validate([
+            'task_name' => 'string|max:255',
+            'date' => 'date',
+            'hours' => 'integer|min:1',
+            'user_id' => 'exists:users,id',
+            'project_id' => 'exists:projects,id',
+        ]);
+
+        return new TimesheetResource($this->timesheetRepository->updateTimesheet($id, $validated));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy($id)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $this->timesheetRepository->deleteTimesheet($id);
+        return response()->json(['message' => 'Timesheet deleted successfully'], 200);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Repositories\UserRepository;
 use Illuminate\Http\Request;
 use App\Http\Requests\UserRequest;
+use App\Http\Resources\UserResource;
 
 class UserController extends Controller
 {
@@ -24,9 +25,9 @@ class UserController extends Controller
  *     @OA\Response(response="200", description="List of users"),
  * )
  */
-public function index()
+public function index(Request $request)
 {
-    return response()->json($this->userRepository->getAllUsers());
+    return UserResource::collection($this->userRepository->getAllUsers());
 }
 
 /**
@@ -55,7 +56,7 @@ public function store(UserRequest $request)
  
     public function show($id)
     {
-        return response()->json($this->userRepository->findUserById($id));
+        return new UserResource($this->userRepository->findUserById($id));
     }
 
     public function update(UserRequest $request, $id)
