@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ProjectSeeder::class,
             TimesheetSeeder::class,
+            ProjectUserSeeder::class,
         ]);
         
     }
