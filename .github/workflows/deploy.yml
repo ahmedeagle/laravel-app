@@ -1,4 +1,4 @@
-name: Deploy Laravel to AWS Swarm
+name: Deploy Laravel API to AWS ECR + Docker Swarm
 
 on:
   push:
@@ -6,36 +6,74 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      # 🔹 Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Log in to Amazon ECR
+      # 🔹 Generate Unique Image Tag (Commit Hash + Timestamp)
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)-$(date +%s)" >> $GITHUB_ENV
+
+      # 🔹 Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 🔹 Log in to AWS ECR
+      - name: Log in to AWS ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
+      # 🔹 Build and Push Docker Image to AWS ECR
       - name: Build and Push Docker Image
-        run: |
-          docker build -t 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ github.sha }} .
-          docker push 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ github.sha }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ env.IMAGE_TAG }}
 
-      - name: Deploy Laravel on Swarm (Only If Service Doesn't Exist)
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ${{ secrets.SSH_KEY }} ec2-user@your-ec2-ip "
-          if ! docker service ls | grep -q 'laravel-stack_laravel-api'; then
-            docker service create \
-              --name laravel-stack_laravel-api \
-              --network laravel-network \
-              --publish 8000:8000 \
-              --env APP_ENV=local \
-              --env DB_HOST=db \
-              --env DB_DATABASE=laravel \
-              --env DB_USERNAME=root \
-              --env DB_PASSWORD=root \
-              043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ github.sha }}
-          else
-            docker service update --image 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ github.sha }} laravel-stack_laravel-api
-          fi"
+      # 🔹 Deploy to Docker Swarm
+      - name: Deploy to Docker Swarm
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SWARM_MANAGER_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # Ensure AWS ECR login works on Swarm manager
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 043309367638.dkr.ecr.us-east-1.amazonaws.com
+
+            # Get the latest image tag from ECR
+            IMAGE_TAG=$(aws ecr describe-images --repository-name astudio-laravel-api --region us-east-1 --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text)
+
+            # Pull the latest image
+            docker pull 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:$IMAGE_TAG
+
+            # Check if the Laravel service exists
+            SERVICE_EXISTS=$(docker service ls --filter name=laravel-stack_laravel-api -q)
+
+            if [ -z "$SERVICE_EXISTS" ]; then
+              echo "🚀 Laravel service not found. Creating it for the first time..."
+              docker service create \
+                --name laravel-stack_laravel-api \
+                --network laravel-network \
+                --publish 8000:8000 \
+                --env APP_ENV=local \
+                --env DB_HOST=db \
+                --env DB_DATABASE=laravel \
+                --env DB_USERNAME=root \
+                --env DB_PASSWORD=root \
+                043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:$IMAGE_TAG
+            else
+              echo "🔄 Laravel service exists. Updating it..."
+              docker service update --image 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:$IMAGE_TAG laravel-stack_laravel-api
+            fi
