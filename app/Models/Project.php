@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class Project extends Model
 {
@@ -11,11 +13,10 @@ class Project extends Model
 
     protected $fillable = ['name', 'department', 'start_date', 'end_date', 'status'];
 
-    public function users()
-    {
-        return $this->belongsToMany(User::class, 'project_user');
+    public function users(): BelongsToMany {
+        return $this->belongsToMany(User::class, 'project_user')->withTimestamps();
     }
-
+    
     public function timesheets()
     {
         return $this->hasMany(Timesheet::class);

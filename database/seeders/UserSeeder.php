@@ -10,15 +10,15 @@ class UserSeeder extends Seeder
 {
     public function run()
     {
-        User::create([
-            'first_name' => 'Ahmed',
-            'last_name' => 'TechLead',
-            'date_of_birth' => '1990-01-01',
-            'gender' => 'male',
-            'email' => 'ahmed@example.com',
-            'password' => Hash::make('password'),
-        ]);
-
-        User::factory(10)->create(); // Generate 10 random users
+        User::firstOrCreate(
+            ['email' => 'ahmed.emam.dev@gmail.com'],
+            [
+                'first_name' => 'Ahmed',
+                'last_name' => 'TechLead',
+                'date_of_birth' => '1990-01-01',
+                'gender' => 'male',
+                'password' => Hash::make('password'),
+            ]
+        );
     }
 }

@@ -1,0 +1,55 @@
+name: Deploy Laravel API to AWS ECR + Docker Swarm
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🔹 Checkout the code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 🔹 Generate Unique Image Tag (Commit Hash + Timestamp)
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=$(git rev-parse --short HEAD)-$(date +%s)" >> $GITHUB_ENV
+
+      # 🔹 Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 🔹 Log in to AWS ECR
+      - name: Log in to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 🔹 Build and Push Docker Image to AWS ECR (Using Unique Tag)
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:${{ env.IMAGE_TAG }}
+
+      # 🔹 Deploy to Docker Swarm
+      - name: Deploy to Docker Swarm
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SWARM_MANAGER_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 043309367638.dkr.ecr.us-east-1.amazonaws.com
+            IMAGE_TAG=$(aws ecr describe-images --repository-name astudio-laravel-api --region us-east-1 --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' --output text)
+            docker pull 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:$IMAGE_TAG
+            docker service update --image 043309367638.dkr.ecr.us-east-1.amazonaws.com/astudio-laravel-api:$IMAGE_TAG laravel-stack_laravel-api

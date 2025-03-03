@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -32,9 +33,8 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    public function projects()
-    {
-        return $this->belongsToMany(Project::class, 'project_user');
+    public function projects(): BelongsToMany {
+        return $this->belongsToMany(Project::class, 'project_user')->withTimestamps();
     }
 
     public function timesheets()

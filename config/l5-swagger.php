@@ -8,6 +8,9 @@ return [
                 'title' => 'Laravel API',
                 'description' => 'API Documentation for Laravel A studio',
                 'version' => '1.0.0',
+                'contact' => [
+                'email' => 'ahmed.emam.dev@gmail.com',
+            ],
             ],
 
             'routes' => [
