@@ -13,7 +13,7 @@ services:
     depends_on:
       - db
     networks:
-      - laravel_network
+      - app-network
 
   db:
     image: mysql:8
@@ -25,7 +25,7 @@ services:
     ports:
       - "3306:3306"
     networks:
-      - laravel_network
+      - app-network
 
   nginx:
     image: nginx:latest
@@ -39,8 +39,8 @@ services:
     depends_on:
       - app
     networks:
-      - laravel_network
+      - app-network
 
 networks:
-  laravel_network:
+  app-network:
     driver: bridge
