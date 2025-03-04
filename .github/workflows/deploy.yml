@@ -65,7 +65,7 @@ jobs:
               echo "🚀 Laravel service not found. Creating it for the first time..."
               docker service create \
                 --name laravel-stack_laravel-api \
-                --network laravel-network \
+                --network app-network \
                 --publish 8000:8000 \
                 --env APP_ENV=local \
                 --env DB_HOST=db \
