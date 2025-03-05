@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api([
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class, // Sanctum Middleware
             \Illuminate\Routing\Middleware\ThrottleRequests::class, // API Rate Limiting
+            App\Http\Middleware\CorsMiddleware::class,
+
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
