@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Project extends Model
 {
-    ////
+    /////////
     use HasFactory;
 
     protected $fillable = ['name', 'department', 'start_date', 'end_date', 'status'];
